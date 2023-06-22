@@ -1,62 +1,160 @@
-type taco_supply =
+// Initialising the variables
+
+type initParameter = string list * int
+
+type voteParameter = string
+
+type winner_dets =
   {
-   current_stock : nat;
-   max_price : tez
+   winner : string;
+   votes : int
   }
 
-type taco_shop_storage = (nat, taco_supply) map
+type candidateMap = (string, int) map
 
-type return = operation list * taco_shop_storage
+type entryPoints =
+| Init of initParameter
+| Vote of voteParameter
+| GetWinner
 
-let main (parameter, taco_shop_storage : unit * taco_shop_storage) : return =
-  [], taco_shop_storage
+// Defining the storage
 
-let init_storage =
-  Map.literal
-    [
-      (1n,
-       {
-        current_stock = 50n;
-        max_price = 50000000mutez
-       });
-      (2n,
-       {
-        current_stock = 20n;
-        max_price = 75000000mutez
-       })
-    ]
+type storage =
+  {
+   admin : address;
+   candidates : (string, int) map;
+   voting_end_time : timestamp;
+   voters : (address, bool) map;
+   winner_details : winner_dets
+  }
 
-let ownerAddress : address = ("tz1TGu6TN5GSez2ndXXeDX6LgUDvLzPLqgYV" : address)
+type returnType = operation list * storage
 
-let buy_taco (taco_kind_index, taco_shop_storage : nat * taco_shop_storage)
-: return =
-  // Retrieve the taco_kind from the contract's storage or fail
+// First Entrypoint
 
-  let taco_kind : taco_supply =
-    match Map.find_opt taco_kind_index taco_shop_storage with
-      Some (kind) -> kind
-    | None -> (failwith ("Unknown kind of taco.") : taco_supply) in
-  let current_purchase_price : tez =
-    taco_kind.max_price / taco_kind.current_stock in
-  // We won't sell tacos if the amount is not correct
+let init (params, store : initParameter * storage) : returnType =
+  // Check if currrent account was admin
 
-  let () =
-    assert_with_error
-      ((Tezos.get_amount ()) <> current_purchase_price)
-      "Sorry, the taco you are trying to purchase has a different price" in
-  // Decrease the stock by 1n, because we have just sold one
+  if Tezos.get_source () <> store.admin
+  then (failwith "Admin not recognized" : returnType)
+  else
+    let (candidate_names, voting_duration) = params in
+    // Iterate through list of names supplied by admin and add them to the mapping with an initial value of 0 votes, also initialise the voters map 
+    // then store them in storage
 
-  let taco_kind =
-    {taco_kind with current_stock = (abs (taco_kind.current_stock - 1n))} in
-  // Update the storage with the refreshed taco_kind
+    let addToMap (candidates_Mapping, name : candidateMap * string)
+    : (string, int) map = Map.add name 0 candidates_Mapping in
+    let new_candidates : (string, int) map =
+      List.fold_left addToMap store.candidates candidate_names in
+    let voting_end_time = Tezos.get_now () + voting_duration in
+    let store =
+      {
+        store with
+          candidates = new_candidates;
+          voting_end_time = voting_end_time;
+          voters = (Map.empty : (address, bool) map)
+      } in
+    (([] : operation list), store)
 
-  let taco_shop_storage =
-    Map.update taco_kind_index (Some taco_kind) taco_shop_storage in
-  let receiver : unit contract =
-    match (Tezos.get_contract_opt ownerAddress : unit contract option) with
-      Some (contract) -> contract
-    | None -> (failwith ("Not a contract") : unit contract) in
-  let payoutOperation : operation =
-    Tezos.transaction () (Tezos.get_amount ()) receiver in
-  let operations : operation list = [payoutOperation] in
-  operations, taco_shop_storage
+// Second Entrypoint
+
+let vote (name, store : voteParameter * storage) : returnType =
+  // check if voting time has ended
+
+  if Tezos.get_now () > store.voting_end_time
+  then (failwith "Voting has Ended" : returnType)
+  else
+    // check if voter has paid voting fee
+
+    if Tezos.get_amount () < 500000mutez
+    then (failwith "You need a minimum of 0.5tezos to vote" : returnType)
+    else
+      // keep record of the voters address
+
+      let addr : address = Tezos.get_source () in
+      // check if name supplied by voter exists in the candidates record
+
+      let candidate_exists : bool =
+        match Map.find_opt name store.candidates with
+          Some (_i) -> true
+        | None -> false in
+      // if it exists
+
+      if candidate_exists
+      then
+        // check if the voter himself has not already voted on the platform
+
+        let hasVoted : bool =
+          match Map.find_opt addr store.voters with
+            Some x -> x
+          | None -> false in
+        if (hasVoted)
+        then (failwith "Voter has already voted" : returnType)
+        else
+          // if he has not voted, update his status to become true
+
+          let updated_voters : (address, bool) map =
+            Map.add addr True store.voters in
+          // get the number of votes for the candidate 
+
+          let votes : int =
+            match Map.find_opt name store.candidates with
+              Some k -> k
+            | None -> (failwith "No vote count for this candidate" : int) in
+          // add 1 to the votes
+
+          let updateVotes : int = votes + 1 in
+          // update the mapping of the candidates and store back in the storage
+
+          let updated_candidate_votes =
+            Map.update name (Some updateVotes) store.candidates in
+          let store =
+            {
+              store with
+                candidates = updated_candidate_votes; voters = updated_voters
+            } in
+          (([] : operation list), store)
+      else (failwith "Candidate name does not exist" : returnType)
+
+// Third Entrypoint
+
+let get_winner (store : storage) : returnType =
+  // check if voting time has not ended
+
+  if Tezos.get_now () < store.voting_end_time
+  then (failwith "Voting session has not ended" : returnType)
+  else
+    // check if source is admin
+
+    if Tezos.get_source () <> store.admin
+    then (failwith "Admin not recognized" : returnType)
+    else
+      // now we iterate through the candidates mapping to extract the candidate with the highest number of votes
+
+      let checkVotes (i, j : winner_dets * (string * int)) : winner_dets =
+        if i.votes > j.1
+        then i
+        else
+          {
+           winner = j.0;
+           votes = j.1
+          } in
+      // this is actually the entrance point for checking for the highest votes, then we return a record, containing the name of the candidate
+      // and the number of votes he has gotten, then store in storage.
+
+      let winner_details : winner_dets =
+        Map.fold
+          checkVotes
+          store.candidates
+          {
+           winner = " ";
+           votes = 0
+          } in
+      let store = {store with winner_details = winner_details} in
+      (([] : operation list), store)
+
+let main (action, store : entryPoints * storage) : returnType =
+  match action with
+    Init params -> init (params, store)
+  | Vote param -> vote (param, store)
+  | GetWinner -> get_winner store

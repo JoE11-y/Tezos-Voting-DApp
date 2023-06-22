@@ -4,7 +4,7 @@ import { buf2hex } from "@taquito/utils";
 import chalk from "chalk";
 import { Spinner } from "cli-spinner";
 import dotenv from "dotenv";
-import code from "../compiled/main.json";
+import code from "../compiled/contract.json";
 import metadata from "./metadata.json";
 
 // Read environment variables from .env file
