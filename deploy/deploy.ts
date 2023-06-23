@@ -64,8 +64,12 @@ if (!rpcUrl) {
 
 // enter all the storage data information
 const storage = {
-  current_stock: 0,
-  max_price: 0
+  admin: "tz1X912EpSF5RjFwCrvKy1633Er9ph8ahSxA",
+  candidates: new MichelsonMap(),
+  voting_end_time: 0,
+  vote_started: false,
+  voters: new MichelsonMap(),
+  winner_details: { winner: "", votes: 0 },
 }
 
 // Initialize RPC connection
@@ -104,7 +108,7 @@ const deploy = async () => {
 
     console.log(
       chalk.green`\nContract address: \n- ` +
-      chalk.green.underline`${origination.contractAddress}`
+      chalk.green.underline`https://better-call.dev/ghostnet/${origination.contractAddress}/code`
     );
   } catch (e) {
     console.log("");
