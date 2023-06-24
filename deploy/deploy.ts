@@ -65,6 +65,7 @@ if (!rpcUrl) {
 // enter all the storage data information
 const storage = {
   admin: "tz1X912EpSF5RjFwCrvKy1633Er9ph8ahSxA",
+  title: "",
   candidates: new MichelsonMap(),
   voting_end_time: 0,
   vote_started: false,

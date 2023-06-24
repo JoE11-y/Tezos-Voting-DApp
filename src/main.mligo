@@ -2,7 +2,7 @@
 
 type candidateData =
   {
-   index : int;
+   index : string;
    name : string;
    image : string;
    votes : int
@@ -10,25 +10,25 @@ type candidateData =
 
 type inputParam =
   {
-   index : int;
+   index : string;
    name : string;
    image : string
   }
 
-type initParameter = inputParam list * int
+type startParameter = inputParam list * int * string
 
-type voteParameter = int
+type voteParameter = string
 
 type winner_dets =
   {
-   winner : int;
+   winner : string;
    votes : int
   }
 
-type candidateMap = (int, candidateData) map
+type candidateMap = (string, candidateData) map
 
 type entryPoints =
-| Init of initParameter
+| Start of startParameter
 | Vote of voteParameter
 | GetWinner
 
@@ -37,7 +37,8 @@ type entryPoints =
 type storage =
   {
    admin : address;
-   candidates : (int, candidateData) map;
+   title : string;
+   candidates : (string, candidateData) map;
    voting_end_time : timestamp;
    vote_started : bool;
    voters : (address, bool) map;
@@ -49,7 +50,7 @@ type returnType = operation list * storage
 
 // First Entrypoint
 
-let init (params, store : initParameter * storage) : returnType =
+let start (params, store : startParameter * storage) : returnType =
   // Check if currrent account was admin
 
   if Tezos.get_source () <> store.admin
@@ -60,12 +61,12 @@ let init (params, store : initParameter * storage) : returnType =
     if store.vote_started
     then (failwith "Voting session is on" : returnType)
     else
-      let (param, voting_duration) = params in
+      let (param, voting_duration, title) = params in
       // Iterate through list of names supplied by admin and add them to the mapping with an initial value of 0 votes, also initialise the voters map 
       // then store them in storage
 
       let addToMap (candidates_Mapping, data : candidateMap * inputParam)
-      : (int, candidateData) map =
+      : (string, candidateData) map =
         Map.add
           data.index
           {
@@ -75,12 +76,13 @@ let init (params, store : initParameter * storage) : returnType =
            votes = 0
           }
           candidates_Mapping in
-      let new_candidates : (int, candidateData) map =
+      let new_candidates : (string, candidateData) map =
         List.fold_left addToMap store.candidates param in
       let voting_end_time = Tezos.get_now () + voting_duration in
       let store =
         {
           store with
+            title = title;
             candidates = new_candidates;
             voting_end_time = voting_end_time;
             vote_started = true;
@@ -157,7 +159,8 @@ let get_winner (store : storage) : returnType =
     else
       // now we iterate through the candidates mapping to extract the candidate with the highest number of votes
 
-      let checkVotes (i, j : winner_dets * (int * candidateData)) : winner_dets =
+      let checkVotes (i, j : winner_dets * (string * candidateData))
+      : winner_dets =
         let candidate : candidateData = j.1 in
         if i.votes > candidate.votes
         then i
@@ -174,7 +177,7 @@ let get_winner (store : storage) : returnType =
           checkVotes
           store.candidates
           {
-           winner = 0;
+           winner = "";
            votes = 0
           } in
       let store =
@@ -183,6 +186,6 @@ let get_winner (store : storage) : returnType =
 
 let main (action, store : entryPoints * storage) : returnType =
   match action with
-    Init params -> init (params, store)
+    Start params -> start (params, store)
   | Vote param -> vote (param, store)
   | GetWinner -> get_winner store
