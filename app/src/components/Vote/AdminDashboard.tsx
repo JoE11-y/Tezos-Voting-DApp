@@ -1,15 +1,24 @@
 import React, { useState } from "react"
 import { Button, Form, Row, Col, InputGroup } from "react-bootstrap"
-import { TezosToolkit, MichelCodecParser } from "@taquito/taquito";
-
+import { v4 as uuid4 } from "uuid"
 
 interface Props {
     save: Function
+    close: Function
+    voteStarted: boolean
+    votingPeriod: string
 }
 
-const CreateCandidates: React.FC<Props> = ({ save }) => {
-    const [formFields, setFormFields] = useState([{ index: 0, name: "", image: "" }])
+const AdminDashboard: React.FC<Props> = ({ save, close, voteStarted, votingPeriod }) => {
+    const [formFields, setFormFields] = useState([{ index: uuid4(), name: "", image: "" }])
     const [duration, setDuration] = useState(0)
+    const [title, setTitle] = useState("")
+
+    const sessionEnded = () => {
+        let now = Date.now();
+        let end = new Date(votingPeriod)
+        return now > end.getTime()
+    }
 
     const handleFormChange = (name: string, value: string, index: number) => {
         const updatedFormFields = formFields.map((field, i) => {
@@ -18,7 +27,6 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
             }
             return field;
         });
-
         setFormFields(updatedFormFields);
     };
 
@@ -26,18 +34,18 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
         return hrs * 3600;
     }
 
-    const submit = async (e: any) => {
+    const submit = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         let seconds = convertToSeconds(duration);
-        console.log(formFields);
+        await save(formFields, seconds, title);
 
-        // const coder = new MichelCodecParser()
-
-        await save(formFields, seconds)
+        const resetForm = e.target as HTMLFormElement;
+        resetForm.reset();
+        setFormFields([{ index: uuid4(), name: "", image: "" }])
     };
 
     const addFields = () => {
-        let object = { index: formFields.length, name: "", image: "" };
+        let object = { index: uuid4(), name: "", image: "" };
         setFormFields([...formFields, object]);
     };
 
@@ -50,11 +58,22 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
 
     return (
         <>
-            <div className="main-box" style={{ border: "5px" }}>
+            <div className="main-box" style={{ fontSize: "5em !important" }}>
                 <div style={{ textAlign: "center" }}>
-                    <h3>Adding Candidates</h3>
+                    <h3>ADMIN DASHBOARD</h3>
                 </div>
                 <Form onSubmit={submit}>
+                    <Row className="mb-3">
+                        <Form.Group as={Col} controlId="formGridCity">
+                            <Form.Label>Title</Form.Label>
+                            <Form.Control
+                                type="text"
+                                name="title"
+                                onChange={(e) => { setTitle(e.target.value) }}
+                                placeholder="Enter Session Title"
+                            />
+                        </Form.Group>
+                    </Row>
                     <Row className="mb-3">
                         <Form.Group as={Col} controlId="formGridCity">
                             <Form.Label>Vote Duration</Form.Label>
@@ -71,11 +90,11 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
                         </Form.Group>
                     </Row>
 
+                    <Form.Label>Candidates</Form.Label>
                     {formFields.map((form, index) => {
                         return (
                             <Row className="mb-3" key={index}>
                                 <Form.Group as={Col} controlId="formGridCity">
-                                    <Form.Label>Candidate Name</Form.Label>
                                     <Form.Control
                                         type="text"
                                         name="name"
@@ -85,12 +104,10 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
                                             let value = e.target.value;
                                             handleFormChange(name, value, index)
                                         }}
-                                        placeholder={`Enter name of candidate ${index}`}
+                                        placeholder={`Enter Name`}
                                     />
                                 </Form.Group>
-
                                 <Form.Group as={Col} controlId="formGridState">
-                                    <Form.Label>Image</Form.Label>
                                     <Form.Control
                                         type="text"
                                         name="image"
@@ -100,40 +117,53 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
                                             let value = e.target.value;
                                             handleFormChange(name, value, index)
                                         }}
-                                        placeholder={`Enter url for candidate ${index}`}
+                                        placeholder={`Enter image url`}
                                     />
                                 </Form.Group>
-
-                                <Form.Group as={Col} controlId="formGridZip">
-                                    <Button
-                                        variant="dark"
-                                        onClick={() => removeFields(index)}
-                                        style={{ marginTop: "14%" }}
-                                    >
-                                        Remove Candidate
-                                    </Button>
-                                </Form.Group>
+                                <Button
+                                    variant="danger"
+                                    onClick={() => removeFields(index)}
+                                    style={{ width: "10%", padding: "2px" }}
+                                >
+                                    x
+                                </Button>
                             </Row>
                         );
                     })}
+
+                    <div style={{ textAlign: "center", padding: "10px" }}>
+                        <Button
+                            variant="dark"
+                            onClick={addFields}
+                            style={{ width: "40%" }}
+                            disabled={voteStarted}
+                        >
+                            Add Candidate
+                        </Button>
+                        &nbsp; &nbsp;
+                        <Button
+                            variant="primary"
+                            type="submit"
+                            style={{ width: "40%" }}
+                            disabled={voteStarted}
+                        >
+                            Start Session
+                        </Button>
+                    </div>
+
                 </Form>
+
                 <div style={{ textAlign: "center" }}>
                     <Button
-                        variant="dark"
-                        onClick={addFields}
-                        style={{ width: "30%" }}
+                        variant="danger"
+                        onClick={() => close()}
+                        disabled={!sessionEnded()}
+                        style={{ width: "80%" }}
                     >
-                        Add Candidate
+                        End Session
                     </Button>
                     &nbsp; &nbsp;
-                    <Button
-                        variant="primary"
-                        type="submit"
-                        onClick={(e) => { submit(e) }}
-                        style={{ width: "30%" }}
-                    >
-                        Start Session
-                    </Button>
+
                 </div>
 
             </div>
@@ -141,4 +171,4 @@ const CreateCandidates: React.FC<Props> = ({ save }) => {
     )
 }
 
-export default CreateCandidates;
+export default AdminDashboard;

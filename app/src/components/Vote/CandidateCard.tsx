@@ -13,12 +13,20 @@ interface Props {
     vote: Function,
     voteStarted: boolean,
     votingPeriod: string,
+    hasVoted: boolean
 }
 
-const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod }) => {
+const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod, hasVoted }) => {
     const trigger = () => {
-        vote(Number(candidate.index));
+        vote(candidate.index);
     };
+
+    const sessionEnded = () => {
+        let now = Date.now();
+        let end = new Date(votingPeriod)
+        return now > end.getTime()
+    }
+
     const canVote = () => voteStarted
     return (
         <Col key={candidate.index}>
@@ -27,7 +35,7 @@ const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod
                     <Stack direction="horizontal" gap={2}>
                         {/* <span className="font-monospace text-secondary">{isAdopted() ? pet.owner : ""}</span> */}
                         <Badge bg="secondary" className="ms-auto">
-                            {candidate.votes}
+                            Votes {candidate.votes}
                         </Badge>
                     </Stack>
                 </Card.Header>
@@ -40,9 +48,9 @@ const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod
                         variant="outline-dark"
                         onClick={trigger}
                         className="w-100 py-3"
-                        disabled={!canVote()}
+                        disabled={(!canVote() && sessionEnded()) || hasVoted}
                     >
-                        {canVote() ? "Vote" : `Voting Closed`}
+                        {canVote() && !sessionEnded() ? hasVoted ? "Vote Registered" : "Vote" : `Voting Closed`}
                     </Button>
                 </Card.Body>
             </Card>

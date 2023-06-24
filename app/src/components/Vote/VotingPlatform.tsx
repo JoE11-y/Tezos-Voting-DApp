@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useCallback, Dispatch, SetStateAction } from "react"
 import { toast } from "react-toastify"
-import CreateCandidates from "./CreateCandidates"
+import AdminDashboard from "./AdminDashboard"
 import Candidate from "./CandidateCard"
 import Loader from "../Loader"
-import { Row } from "react-bootstrap"
+import { Col, Row } from "react-bootstrap"
 import { candidateData } from "./CandidateCard"
 import { TezosToolkit, WalletContract, MichelsonMap } from "@taquito/taquito";
+
 
 
 interface UpdateContractProps {
@@ -34,11 +35,18 @@ const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStora
         }
     }, [])
 
+    const checkIfUserHasVoted = (): boolean => {
+        if (storage.voters) {
+            return storage.voters.get(userAddress);
+        }
+        return false
+    }
+
     // start vote session
-    const startVoteSession = async (data: any, voteDuration: number) => {
+    const startVoteSession = async (data: any, voteDuration: number, title: string) => {
         setLoading(true)
         try {
-            const op = await contract.methods.init(data, voteDuration).send();
+            const op = await contract.methods.start(data, voteDuration, title).send();
             await op.confirmation();
             const newStorage: any = await contract.storage();
             if (newStorage) setStorage(newStorage);
@@ -51,10 +59,26 @@ const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStora
     }
 
     //  function to initiate transaction
-    const vote = async (id: number) => {
+    const vote = async (id: string) => {
         setLoading(true);
         try {
             const op = await contract.methods.vote(id).send({ "mutez": true, "amount": 500000 })
+            await op.confirmation();
+            const newStorage: any = await contract.storage();
+            if (newStorage) setStorage(newStorage);
+            setUserBalance(await Tezos.tz.getBalance(userAddress));
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    //  function to close
+    const getWinner = async () => {
+        setLoading(true);
+        try {
+            const op = await contract.methods.getWinner().send()
             await op.confirmation();
             const newStorage: any = await contract.storage();
             if (newStorage) setStorage(newStorage);
@@ -75,36 +99,33 @@ const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStora
 
     return (
         <>
-            <>
-                <div className="text-start container">
-
-                    <div
-                        id="votingNotice"
-                        className="mb-4"
-                        style={{ marginTop: "1em" }}
-                    >
-                        <span>
-                            <i className="bi bi-bell-fill"></i> Voting Fee is 0.5tz
-                        </span>
-                    </div>
-                </div>
+            <Row className="g-3 mb-5 g-xl-4 g-xxl-5" style={{ padding: "10px" }}>
                 {
-                    storage.admin === userAddress && <div className="d-flex justify-content-between align-items-center mb-4">
-                        <CreateCandidates save={startVoteSession} />
-                    </div>
+                    storage.admin === userAddress &&
+                    <Col xs={6} md={4} key={0}>
+                        <div className="d-flex justify-content-between align-items-center mb-4">
+                            <AdminDashboard save={startVoteSession} close={getWinner} voteStarted={storage.vote_started} votingPeriod={storage.voting_end_time} />
+                        </div>
+                    </Col>
                 }
-                <Row xs={1} sm={2} lg={3} className="g-3  mb-5 g-xl-4 g-xxl-5">
-                    {candidates.map((_candidate: candidateData, index) => (
-                        <Candidate
-                            key={index}
-                            candidate={_candidate}
-                            vote={vote}
-                            voteStarted={storage.vote_started}
-                            votingPeriod={storage.voting_end_time}
-                        />
-                    ))}
-                </Row>
-            </>
+                <Col key={1}>
+                    <div style={{ textAlign: "center" }}>
+                        <h3>{storage.title ? storage.title.toUpperCase() : ""}</h3>
+                    </div>
+                    <Row xs={1} sm={2} lg={3} className="g-3 mb-5 g-xl-4 g-xxl-5">
+                        {candidates.map((_candidate: candidateData, index) => (
+                            <Candidate
+                                key={index}
+                                candidate={_candidate}
+                                vote={vote}
+                                voteStarted={storage.vote_started}
+                                votingPeriod={storage.voting_end_time}
+                                hasVoted={checkIfUserHasVoted()}
+                            />
+                        ))}
+                    </Row>
+                </Col>
+            </Row>
         </>
     )
 }

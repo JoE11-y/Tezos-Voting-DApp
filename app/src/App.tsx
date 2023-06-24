@@ -4,10 +4,11 @@ import { Navbar, Container, Nav } from "react-bootstrap"
 import "./App.css";
 import qrcode from "qrcode-generator";
 import Cover from "./components/Cover";
-import coverImg from "./assets/img/petshop.jpg";
+import coverImg from "./assets/img/vote.jpg";
 import Wallet from "./components/Wallet";
 import VotingPlatform from "./components/Vote/VotingPlatform";
 import { truncateAddress } from "./utils/utils";
+import Countdown from 'react-countdown-simple';
 
 enum BeaconConnection {
   NONE = "",
@@ -31,7 +32,7 @@ const App = () => {
   const [beaconConnection, setBeaconConnection] = useState<boolean>(false);
 
   // Ghostnet contract
-  const contractAddress: string = "KT1XZU6REHQuwofZ6YjUTvvzzuxcxbkTrhzG";
+  const contractAddress: string = "KT1Qx9YXbyEnEKkC7ozUgwAbcF4kSC2QkKCS";
 
   const generateQrCode = (): { __html: string } => {
     const qr = qrcode(0, "L");
@@ -92,7 +93,7 @@ const App = () => {
     );
   } else if (userAddress && !isNaN(userBalance)) {
     return (
-      <Container fluid="md">
+      <Container fluid="md" className="ma-header">
         <Navbar bg="white" expand="lg">
           <Container className="container-fluid">
             <Navbar.Brand href="index.html" className=" m-0 h4 fw-bold">
@@ -116,17 +117,36 @@ const App = () => {
           </Container>
         </Navbar>
         <main>
-          <p>
-            <i className="far fa-file-code"></i>&nbsp;
-            Contract is deployed here&nbsp;
-            <a
-              href={`https://better-call.dev/ghostnet/${contractAddress}/operations`}
-              target="_blank"
-              rel="noopener noreferrer"
+          <div className="text-start container">
+            <div
+              id="votingNotice"
+              className="mb-4 row"
+              style={{ marginTop: "1em" }}
             >
-              {truncateAddress(contractAddress)}
-            </a>
-          </p>
+              <span className="col">
+                <p>
+                  <i className="far fa-file-code"></i>&nbsp;
+                  Contract is deployed here&nbsp;
+                  <a
+                    href={`https://better-call.dev/ghostnet/${contractAddress}/code`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {truncateAddress(contractAddress)}
+                  </a>
+                </p>
+                <span>
+                  <i className="far fa-bell"></i>&nbsp; Voting Fee is 0.5tz
+                </span>
+              </span>
+
+              <span className="col" style={{ textAlign: "right" }}>
+                <i className="far fa-clock"></i>&nbsp;
+                Time Left: <Countdown targetDate={storage ? storage.voting_end_time : Date.now()} />
+              </span>
+            </div>
+          </div>
+
           <VotingPlatform
             contract={contract}
             setUserBalance={setUserBalance}
