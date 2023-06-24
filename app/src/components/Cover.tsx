@@ -107,7 +107,7 @@ const Cover = ({
                 >
                     <img src={coverImg} alt="" />
                 </div>
-                <h1>{name}</h1>
+                <p>{name}</p>
                 <p>Please connect your wallet to continue.</p>
                 <Button
                     onClick={connectWallet}

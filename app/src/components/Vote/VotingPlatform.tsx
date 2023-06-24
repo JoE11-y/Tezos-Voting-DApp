@@ -5,7 +5,7 @@ import Candidate from "./CandidateCard"
 import Loader from "../Loader"
 import { Row } from "react-bootstrap"
 import { candidateData } from "./CandidateCard"
-import { TezosToolkit, WalletContract } from "@taquito/taquito";
+import { TezosToolkit, WalletContract, MichelsonMap } from "@taquito/taquito";
 
 
 interface UpdateContractProps {
@@ -19,16 +19,29 @@ interface UpdateContractProps {
 
 
 const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStorage, storage }: UpdateContractProps) => {
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(false);
+    const [candidates, setCandidates] = useState<candidateData[]>([])
+
+    const getKeys = useCallback((candidate: MichelsonMap<number, candidateData>) => {
+        if (candidate) {
+            const foreachPairs: candidateData[] = [];
+            candidate.forEach((val: candidateData, key: number) => {
+                val.index = val.index.toString()
+                val.votes = val.votes.toString()
+                foreachPairs.push(val);
+            });
+            setCandidates(foreachPairs)
+        }
+    }, [])
 
     // start vote session
-    const startVoteSession = async (data: any) => {
+    const startVoteSession = async (data: any, voteDuration: number) => {
         setLoading(true)
         try {
-            const op = await contract.methods.init(data).send();
+            const op = await contract.methods.init(data, voteDuration).send();
             await op.confirmation();
             const newStorage: any = await contract.storage();
-            if (newStorage) setStorage(newStorage.toNumber());
+            if (newStorage) setStorage(newStorage);
             setUserBalance(await Tezos.tz.getBalance(userAddress));
         } catch (error) {
             console.log(error);
@@ -37,14 +50,14 @@ const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStora
         }
     }
 
-    // //  function to initiate transaction
+    //  function to initiate transaction
     const vote = async (id: number) => {
         setLoading(true);
         try {
-            const op = await contract.methods.vote(id).send();
+            const op = await contract.methods.vote(id).send({ "mutez": true, "amount": 500000 })
             await op.confirmation();
             const newStorage: any = await contract.storage();
-            if (newStorage) setStorage(newStorage.toNumber());
+            if (newStorage) setStorage(newStorage);
             setUserBalance(await Tezos.tz.getBalance(userAddress));
         } catch (error) {
             console.log(error);
@@ -52,6 +65,13 @@ const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStora
             setLoading(false);
         }
     }
+
+    useEffect(() => {
+        if (storage.candidates) {
+            const candidate: MichelsonMap<number, candidateData> = storage ? storage.candidates : null
+            getKeys(candidate)
+        }
+    }, [storage, getKeys])
 
     return (
         <>
@@ -69,18 +89,18 @@ const VotingPlatform = ({ contract, setUserBalance, Tezos, userAddress, setStora
                     </div>
                 </div>
                 {
-                    storage.admin == userAddress && <div className="d-flex justify-content-between align-items-center mb-4">
+                    storage.admin === userAddress && <div className="d-flex justify-content-between align-items-center mb-4">
                         <CreateCandidates save={startVoteSession} />
                     </div>
                 }
                 <Row xs={1} sm={2} lg={3} className="g-3  mb-5 g-xl-4 g-xxl-5">
-                    {storage.candidates.map((_candidate: candidateData) => (
+                    {candidates.map((_candidate: candidateData, index) => (
                         <Candidate
-                            key={_candidate.index}
+                            key={index}
                             candidate={_candidate}
                             vote={vote}
-                            voteStarted={storage.voteStated}
-                            votingPeriod={storage.votingPeriod}
+                            voteStarted={storage.vote_started}
+                            votingPeriod={storage.voting_end_time}
                         />
                     ))}
                 </Row>

@@ -2,9 +2,9 @@ import React from "react";
 import { Card, Button, Col, Badge, Stack } from "react-bootstrap";
 
 export interface candidateData {
-    index: number,
+    index: string,
     name: string,
-    imageUrl: string,
+    image: string,
     votes: string
 }
 
@@ -17,13 +17,11 @@ interface Props {
 
 const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod }) => {
     const trigger = () => {
-        vote(candidate.index);
+        vote(Number(candidate.index));
     };
-
-    const canVote = () => voteStarted;
-
+    const canVote = () => voteStarted
     return (
-        <Col key={candidate.name}>
+        <Col key={candidate.index}>
             <Card className=" h-100">
                 <Card.Header>
                     <Stack direction="horizontal" gap={2}>
@@ -34,7 +32,7 @@ const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod
                     </Stack>
                 </Card.Header>
                 <div className=" ratio ratio-4x3">
-                    <img src={candidate.imageUrl} alt={candidate.name} style={{ objectFit: "cover" }} />
+                    <img src={candidate.image} alt={candidate.name} style={{ objectFit: "cover" }} />
                 </div>
                 <Card.Body className="d-flex  flex-column text-center">
                     <Card.Title>{candidate.name}</Card.Title>
@@ -42,7 +40,7 @@ const Candidate: React.FC<Props> = ({ candidate, vote, voteStarted, votingPeriod
                         variant="outline-dark"
                         onClick={trigger}
                         className="w-100 py-3"
-                        disabled={canVote()}
+                        disabled={!canVote()}
                     >
                         {canVote() ? "Vote" : `Voting Closed`}
                     </Button>

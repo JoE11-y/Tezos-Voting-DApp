@@ -2,6 +2,7 @@ import React, { Dispatch, SetStateAction } from "react";
 import { BeaconWallet } from "@taquito/beacon-wallet";
 import { TezosToolkit } from "@taquito/taquito";
 import { Dropdown, Stack, Spinner } from "react-bootstrap";
+import { truncateAddress } from "../utils/utils";
 
 interface ButtonProps {
     address: string,
@@ -42,14 +43,14 @@ const Wallet: React.FC<ButtonProps> = ({
     if (address) {
         return (
             <>
-                <Dropdown>
+                <Dropdown style={{}}>
                     <Dropdown.Toggle
                         variant="light"
                         id="dropdown-basic"
                         className="d-flex align-items-center border rounded-pill py-1"
                     >
                         {amount ? (
-                            <p>
+                            <p style={{ margin: "auto" }} >
                                 <i className="fas fa-piggy-bank"></i>&nbsp;
                                 {(amount / 1000000).toLocaleString("en-US")} ꜩ
                             </p>
@@ -66,7 +67,7 @@ const Wallet: React.FC<ButtonProps> = ({
                         >
                             <Stack direction="horizontal" gap={2}>
                                 <i className="bi bi-person-circle fs-4" />
-                                <span className="font-monospace">{address}</span>
+                                <span className="font-monospace">{truncateAddress(address)}</span>
                             </Stack>
                         </Dropdown.Item>
 

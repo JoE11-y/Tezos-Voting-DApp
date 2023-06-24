@@ -7,6 +7,7 @@ import Cover from "./components/Cover";
 import coverImg from "./assets/img/petshop.jpg";
 import Wallet from "./components/Wallet";
 import VotingPlatform from "./components/Vote/VotingPlatform";
+import { truncateAddress } from "./utils/utils";
 
 enum BeaconConnection {
   NONE = "",
@@ -25,12 +26,12 @@ const App = () => {
   const [wallet, setWallet] = useState<any>(null);
   const [userAddress, setUserAddress] = useState<string>("");
   const [userBalance, setUserBalance] = useState<number>(0);
-  const [storage, setStorage] = useState<number>(0);
+  const [storage, setStorage] = useState<any>({});
   const [copiedPublicToken, setCopiedPublicToken] = useState<boolean>(false);
   const [beaconConnection, setBeaconConnection] = useState<boolean>(false);
 
   // Ghostnet contract
-  const contractAddress: string = "KT1LqrVuyjQY1QKnHp1wYqf5QuA6puTkNJzT";
+  const contractAddress: string = "KT1XZU6REHQuwofZ6YjUTvvzzuxcxbkTrhzG";
 
   const generateQrCode = (): { __html: string } => {
     const qr = qrcode(0, "L");
@@ -95,7 +96,7 @@ const App = () => {
         <Navbar bg="white" expand="lg">
           <Container className="container-fluid">
             <Navbar.Brand href="index.html" className=" m-0 h4 fw-bold">
-              Tezos Quiz DApp
+              Tezos Voting DApp
             </Navbar.Brand>
             <Nav className="justify-content-end pt-3 pb-5">
               <Nav.Item>
@@ -117,13 +118,13 @@ const App = () => {
         <main>
           <p>
             <i className="far fa-file-code"></i>&nbsp;
-            Contract is deployed here
+            Contract is deployed here&nbsp;
             <a
               href={`https://better-call.dev/ghostnet/${contractAddress}/operations`}
               target="_blank"
               rel="noopener noreferrer"
             >
-              {contractAddress}
+              {truncateAddress(contractAddress)}
             </a>
           </p>
           <VotingPlatform
